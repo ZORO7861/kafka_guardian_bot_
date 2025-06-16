@@ -4,7 +4,7 @@ from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID
 import asyncio
 import re
 import time
-
+from handlers import start
 app = Client("KafkaMediaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 PERMITTED_USERS = set()
