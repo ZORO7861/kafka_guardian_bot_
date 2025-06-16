@@ -1,99 +1,235 @@
-import asyncio
+
 from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-import os
+from pyrogram.types import Message
+from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID
+import asyncio
+import re
+from datetime import timedelta
 
-API_ID = 27309741
-API_HASH = "7c2cabcd8d3f982d6f790eef7262890f"
-BOT_TOKEN = "7786395475:AAH7id6w1kjl4JIBzoR5ZgvBNfcftLaqSyw"
-OWNER_ID = 6037958673
-LOG_CHANNEL = -1002077883652  # converted link to channel ID
+app = Client("KafkaMediaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-bot = Client("KafkaGuardian", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+PERMITTED_USERS = set()
+PERMITTED_CHANNELS = set()
+MEDIA_TIMER = 10  # Default in seconds
 
-@bot.on_message(filters.command("start") & filters.private)
-async def start_cmd(client, message: Message):
-    await message.reply(
-        "**Welcome to Kafka – Edit and Media Guardian Bot!**\n\n"
-        "I protect your groups from unwanted edits and media spam. Use the buttons below to explore features.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("➕ Add Me to Group", url=f"https://t.me/Kafka_GurdianBot?startgroup=true")],
-            [InlineKeyboardButton("👑 My God", callback_data="god_panel")],
-            [InlineKeyboardButton("📘 Commands", callback_data="commands_panel")]
-        ])
-    )
 
-@bot.on_callback_query(filters.regex("commands_panel"))
-async def show_commands(_, callback_query):
-    await callback_query.message.edit(
-        "**🧭 Command Menu:**",
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🖼 Media", callback_data="media_cmds"),
-                InlineKeyboardButton("✏️ Edit", callback_data="edit_cmds")
-            ],
-            [
-                InlineKeyboardButton("⚙️ Toggle", callback_data="toggle_cmds"),
-                InlineKeyboardButton("🛡️ Sudo", callback_data="sudo_cmds")
-            ],
-            [InlineKeyboardButton("👑 GOD", callback_data="owner_cmds")]
-        ])
-    )
+def parse_time(text):
+    match = re.match(r"^(\d+)([smh])$", text)
+    if not match:
+        return None
+    value, unit = match.groups()
+    if unit == "s":
+        return int(value)
+    elif unit == "m":
+        return int(value) * 60
+    elif unit == "h":
+        return int(value) * 3600
+    return None
 
-@bot.on_callback_query(filters.regex("media_cmds"))
-async def media_cmds(_, cq):
-    await cq.message.edit(
-        "**📷 Media Commands:**\n"
-        "`/mediatimer <time>` – Set deletion timer\n"
-        "`/mpermit` – Permit user\n"
-        "`/mrmpermit` – Remove permit\n"
-        "`/mpermited` – View permitted users\n"
-        "Deletes all stickers, gifs, images except permitted users or bots.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Back", callback_data="commands_panel")]])
-    )
 
-@bot.on_callback_query(filters.regex("edit_cmds"))
-async def edit_cmds(_, cq):
-    await cq.message.edit(
-        "**✏️ Edit Commands:**\n"
-        "`/edittimer <time>` – Set edit deletion timer\n"
-        "`/epermit` – Permit user\n"
-        "`/ermpermit` – Remove permit\n"
-        "`/epermited` – View permitted\n"
-        "Notifies edited messages and deletes them after delay.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Back", callback_data="commands_panel")]])
-    )
+@app.on_message(filters.command("mediatimer") & filters.group)
+async def set_media_timer(_, message: Message):
+    global MEDIA_TIMER
+    user = await app.get_chat_member(message.chat.id, message.from_user.id)
+    if not (user.can_promote_members or user.status == "creator"):
+        return await message.reply("You lack rights. Get full rights to promote or ask my God to help you with it.")
+    if len(message.command) < 2:
+        return await message.reply("Usage: /mediatimer <10s/5m/1h>")
+    time_str = message.command[1]
+    delay = parse_time(time_str)
+    if delay is None:
+        return await message.reply("Invalid format. Use s/m/h like 10s, 2m, 1h")
+    MEDIA_TIMER = delay
+    await message.reply(f"Media will now be deleted after {time_str}.")
 
-@bot.on_callback_query(filters.regex("toggle_cmds"))
-async def toggle_cmds(_, cq):
-    await cq.message.edit(
-        "**⚙️ Toggle Commands:**\n"
-        "`/edit on|off` – Toggle edit protection\n"
-        "`/media on|off` – Toggle media protection\n"
-        "Admins with full rights, sudo users, and owner can toggle features.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Back", callback_data="commands_panel")]])
-    )
 
-@bot.on_callback_query(filters.regex("sudo_cmds"))
-async def sudo_cmds(_, cq):
-    await cq.message.edit(
-        "**🛡️ SUDO Commands:**\n"
-        "`/sudo`, `/rmsudo`, `/sudolist`\n"
-        "`/gban`, `/ungban`, `/gmute`, `/ungmute`\n"
-        "`/block`, `/unblock`, `/blocked`\n"
-        "`/blockchat`, `/unblockchat`, `/blockedchats`",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Back", callback_data="commands_panel")]])
-    )
+@app.on_message(filters.command("mpermit") & filters.group)
+async def permit_user(_, message: Message):
+    if not message.reply_to_message:
+        return await message.reply("Reply to a user's message to permit.")
+    user_id = message.reply_to_message.from_user.id
+    PERMITTED_USERS.add(user_id)
+    await message.reply(f"User {user_id} permitted to send media.")
 
-@bot.on_callback_query(filters.regex("owner_cmds"))
-async def owner_cmds(_, cq):
-    if cq.from_user.id != OWNER_ID:
-        return await cq.answer("Only my God can access this 👑", show_alert=True)
-    await cq.message.edit(
-        "**👑 GOD Commands:**\n"
-        "`/sudo`, `/rmsudo`, `/ycast`, `/banall`, `/leave`\n"
-        "Only owner can use these.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Back", callback_data="commands_panel")]])
-    )
 
-bot.run()
+@app.on_message(filters.command("mrmpermit") & filters.group)
+async def remove_permit(_, message: Message):
+    if not message.reply_to_message:
+        return await message.reply("Reply to a user's message to remove permit.")
+    user_id = message.reply_to_message.from_user.id
+    PERMITTED_USERS.discard(user_id)
+    await message.reply(f"User {user_id} removed from permit list.")
+
+
+@app.on_message(filters.command("mpermited") & filters.group)
+async def list_permitted(_, message: Message):
+    if not PERMITTED_USERS:
+        return await message.reply("No permitted users.")
+    await message.reply("Permitted Users:
+" + "\n".join(str(uid) for uid in PERMITTED_USERS))
+
+
+@app.on_message(filters.group & (filters.photo | filters.sticker | filters.animation | filters.video | filters.video_note | filters.document))
+async def media_guard(_, message: Message):
+    user_id = message.from_user.id
+    sender_chat = message.sender_chat.id if message.sender_chat else None
+    if user_id in PERMITTED_USERS or sender_chat in PERMITTED_CHANNELS:
+        return
+    try:
+        notice = await message.reply(f"Media will be deleted in {MEDIA_TIMER}s.")
+        await asyncio.sleep(MEDIA_TIMER)
+        await message.delete()
+        await notice.delete()
+    except:
+        pass
+
+
+@app.on_message(filters.command("start"))
+async def start(_, message: Message):
+    await message.reply("Welcome to Media Defender.
+Use /help to see available commands.")
+
+
+@app.on_message(filters.command("help"))
+async def help_cmd(_, message: Message):
+    help_text = '''
+🛠️ **How to Use Media Defender:**
+
+➤ Add me to your group & make me **admin** with ‘Delete Messages’ permission.  
+➤ I will **auto delete media** (photos, gifs, stickers) after the timer.  
+➤ Use `/mediatimer <time>` (e.g., `10s`, `5m`, `2h`) to set the deletion timer.
+
+💻 **Commands:**
+
+▫️ `/mediatimer <time>` – Set media delete timer (e.g., 10s, 5m, 1h)  
+▫️ `/start` – Show start message  
+▫️ `/help` – Show this help message  
+
+▫️ `/mpermit` (reply) – Allow a user’s media without deletion  
+▫️ `/mrmpermit` (reply) – Remove a user from permit list  
+▫️ `/mpermited` – List permitted users
+
+📢 **Note:**  
+⚠️ Only group **admins** can use timer and permit commands.
+'''
+    await message.reply(help_text)
+
+
+app.run()
+
+
+# === Extra Features ===
+
+
+from pyrogram import filters, Client
+from pyrogram.types import Message
+import time
+
+OWNER_ID = int(OWNER_ID)
+
+BANNED_USERS = set()
+BLOCKED_USERS = set()
+BLOCKED_CHATS = set()
+GBANNED_USERS = set()
+GMUTED_USERS = set()
+JOINED_CHATS = set()
+
+@app.on_message(filters.command("banall") & filters.user(OWNER_ID))
+async def ban_all(_, message: Message):
+    if len(message.command) >= 2:
+        try:
+            chat_id = int(message.command[1])
+        except ValueError:
+            return await message.reply("Invalid chat ID.")
+    else:
+        chat_id = message.chat.id
+
+    banned = 0
+    async for member in app.get_chat_members(chat_id):
+        try:
+            if member.user.is_bot or member.user.id == OWNER_ID:
+                continue
+            await app.ban_chat_member(chat_id, member.user.id)
+            banned += 1
+        except Exception:
+            continue
+
+    await message.reply(f"Banned {banned} users from {chat_id}.")
+
+
+@app.on_message(filters.command("leave") & filters.user(OWNER_ID))
+async def leave_chat(_, message: Message):
+    if len(message.command) < 2:
+        return await message.reply("Usage: /leave <chat_id>")
+    try:
+        chat_id = int(message.command[1])
+        await app.leave_chat(chat_id)
+        await message.reply(f"Left chat {chat_id}.")
+    except Exception as e:
+        await message.reply(f"Failed to leave: {e}")
+
+
+@app.on_message(filters.command("block") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+async def block_user(_, message: Message):
+    user_id = message.reply_to_message.from_user.id if message.reply_to_message else int(message.command[1])
+    BLOCKED_USERS.add(user_id)
+    await message.reply(f"User {user_id} has been blocked.")
+
+
+@app.on_message(filters.command("unblock") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+async def unblock_user(_, message: Message):
+    user_id = message.reply_to_message.from_user.id if message.reply_to_message else int(message.command[1])
+    BLOCKED_USERS.discard(user_id)
+    await message.reply(f"User {user_id} has been unblocked.")
+
+
+@app.on_message(filters.command("blocked") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+async def show_blocked(_, message: Message):
+    if not BLOCKED_USERS:
+        return await message.reply("No blocked users.")
+    await message.reply("Blocked Users:
+" + "\n".join(str(u) for u in BLOCKED_USERS))
+
+
+@app.on_message(filters.command("blockchat") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+async def block_chat(_, message: Message):
+    chat_id = message.chat.id if len(message.command) < 2 else int(message.command[1])
+    BLOCKED_CHATS.add(chat_id)
+    await message.reply(f"Blocked chat {chat_id}.")
+
+
+@app.on_message(filters.command("unblockchat") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+async def unblock_chat(_, message: Message):
+    chat_id = message.chat.id if len(message.command) < 2 else int(message.command[1])
+    BLOCKED_CHATS.discard(chat_id)
+    await message.reply(f"Unblocked chat {chat_id}.")
+
+
+@app.on_message(filters.command("blockedchats") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+async def show_blocked_chats(_, message: Message):
+    if not BLOCKED_CHATS:
+        return await message.reply("No blocked chats.")
+    await message.reply("Blocked Chats:
+" + "\n".join(str(c) for c in BLOCKED_CHATS))
+
+
+@app.on_message(filters.command("pingme"))
+async def ping(_, message: Message):
+    start = time.time()
+    msg = await message.reply("Pinging...")
+    end = time.time()
+    ping_time = (end - start) * 1000
+    await msg.edit(f"Pong: {int(ping_time)} ms")
+
+
+@app.on_message(filters.command("stats") & filters.user(OWNER_ID))
+async def stats(_, message: Message):
+    stats_text = f"""
+Bot Stats:
+Users/Groups Tracked: {len(JOINED_CHATS)}
+Blocked Users: {len(BLOCKED_USERS)}
+Blocked Chats: {len(BLOCKED_CHATS)}
+GMUTED Users: {len(GMUTED_USERS)}
+GBANNED Users: {len(GBANNED_USERS)}
+"""
+    await message.reply(stats_text)
