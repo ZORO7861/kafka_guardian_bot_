@@ -1,9 +1,10 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID
 import asyncio
 import re
 import time
+
 app = Client("KafkaMediaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 PERMITTED_USERS = set()
@@ -20,66 +21,165 @@ GBANNED_USERS = set()
 GMUTED_USERS = set()
 JOINED_CHATS = set()
 
+
+# Start command
+@app.on_message(filters.command("start") & filters.private)
+async def start_handler(client, message: Message):
+    user = message.from_user.first_name or "User"
+    text = f"""
+𝖧𝖾𝗅𝗅𝗈, {user} 🧸  
+➻ 𝖬𝗒𝗌𝖾𝗅𝖿 𝐊ᴀғᴋᴀ 𝐇ᴏɴᴋᴀɪ – 𝖳𝗁𝖾 𝖬𝗈𝗌𝗍 𝖯𝗈𝗐𝖾𝗋𝖿𝗎𝗅 𝖳𝖾𝗅𝖾𝗀𝗋𝖺𝗆 𝖡𝗈𝗍 𝖥𝗈𝗋 𝖤𝖽𝗂𝗍 & 𝖬𝖾𝖽𝗂𝖺 𝖣𝖾𝖿𝖾𝗇𝗌𝖾 ✨  
+━━━━━━━━━━━━━━━━━━━━━━━  
+🔹 Automatically deletes spammy media  
+🔹 Removes edited messages after a set delay  
+🔹 Use timers, permit users, smart controls  
+🔹 Powerful SUDO & OWNER system  
+🔹 Secure logging and moderation  
+━━━━━━━━━━━━━━━━━━━━━━━  
+📚 Tap "Commands" below for features list.
+"""
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("➕ 𝐀ᴅᴅ 𝐌ᴇ 𝐓ᴏ 𝐘ᴏᴜʀ 𝐆ʀᴏᴜᴘ", url=f"https://t.me/{client.me.username}?startgroup=true")],
+        [InlineKeyboardButton("📚 𝐂ᴏᴍᴍᴀɴᴅ𝐬", callback_data="command_menu")],
+        [
+            InlineKeyboardButton("🔄 𝐔ᴘᴅᴀᴛᴇ", url="https://t.me/kafkahonkaisupport"),
+            InlineKeyboardButton("💬 𝐒ᴜᴘᴘᴏʀᴛ", url="https://t.me/kafkahonkainetworks")
+        ],
+        [InlineKeyboardButton("👑 𝐎ᴡɴᴇʀ", url="https://t.me/ScorgeVirus")]
+    ])
+    await message.reply_photo(
+        photo="https://files.catbox.moe/v2y36k.jpg",
+        caption=text,
+        reply_markup=keyboard
+    )
+
+
+# Inline Command Menu
+@app.on_callback_query(filters.regex("command_menu"))
+async def command_menu_handler(client, callback_query: CallbackQuery):
+    text = "<b>📚 Kafka Honkai Command Menu</b>\n\nSelect a category below:"
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⚙️ Basic", callback_data="basic_cmds")],
+        [InlineKeyboardButton("📝 Edit Defense", callback_data="edit_cmds")],
+        [InlineKeyboardButton("🎞 Media Defense", callback_data="media_cmds")],
+        [InlineKeyboardButton("👑 Admin & Sudo", callback_data="admin_cmds")],
+        [InlineKeyboardButton("🛡 Moderation", callback_data="mod_cmds")],
+    ])
+    await callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="html")
+
+@app.on_callback_query(filters.regex("basic_cmds"))
+async def basic_cmds(client, callback_query: CallbackQuery):
+    text = """
+<b>⚙️ Basic Commands:</b>
+
+/start - Start the bot  
+/help - Show help and features  
+/pingme - Check bot ping  
+/alive - Show bot status  
+/stats - Usage stats
+"""
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+
+@app.on_callback_query(filters.regex("edit_cmds"))
+async def edit_cmds(client, callback_query: CallbackQuery):
+    text = """
+<b>📝 Edit Defense:</b>
+
+/edittimer - Set edit delete timer  
+/epermit - Allow user to edit  
+/ermpermit - Remove edit permit  
+/epermited - List edit-permitted users  
+/edit on - Enable edit defense  
+/edit off - Disable edit defense
+"""
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+
+@app.on_callback_query(filters.regex("media_cmds"))
+async def media_cmds(client, callback_query: CallbackQuery):
+    text = """
+<b>🎞 Media Defense:</b>
+
+/mediatimer - Set media auto-delete  
+/mpermit - Allow user/bot to send media  
+/mrmpermit - Remove media permit  
+/mpermited - List media-permitted users  
+/media on - Enable media defense  
+/media off - Disable media defense
+"""
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+
+@app.on_callback_query(filters.regex("admin_cmds"))
+async def admin_cmds(client, callback_query: CallbackQuery):
+    text = """
+<b>👑 Admin & Sudo:</b>
+
+/sudo - Add sudo user  
+/rmsudo - Remove sudo  
+/sudolist - List sudo users  
+/block - Block user from bot  
+/unblock - Unblock user  
+/blocked - Blocked users list  
+/blockchat - Block group  
+/unblockchat - Unblock group  
+/blockedchats - Blocked chats list
+"""
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+
+@app.on_callback_query(filters.regex("mod_cmds"))
+async def mod_cmds(client, callback_query: CallbackQuery):
+    text = """
+<b>🛡 Moderation:</b>
+
+/gban - Globally ban user  
+/ungban - Unban user  
+/gmute - Globally mute  
+/ungmute - Unmute globally
+"""
+    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+
+# Helpers
 def parse_time(text):
     match = re.match(r"^(\d+)([smh])$", text)
     if not match:
         return None
     value, unit = match.groups()
-    if unit == "s":
-        return int(value)
-    elif unit == "m":
-        return int(value) * 60
-    elif unit == "h":
-        return int(value) * 3600
-    return None
+    return int(value) * {"s": 1, "m": 60, "h": 3600}.get(unit, 0)
 
+# Media Defense Commands
 @app.on_message(filters.command("mediatimer") & filters.group)
 async def set_media_timer(_, message: Message):
     global MEDIA_TIMER
-    
-    # Check user permissions
     user = await app.get_chat_member(message.chat.id, message.from_user.id)
     if not (user.status == "creator" or user.can_promote_members):
-        return await message.reply(
-            "You don't have permission to change media timer settings."
-        )
-
-    # Ensure a time argument is provided
+        return await message.reply("You don't have permission to change media timer settings.")
     if len(message.command) < 2:
         return await message.reply("Usage: /mediatimer <seconds>")
-
-    # Try parsing the media timer
     try:
         MEDIA_TIMER = int(message.command[1])
         await message.delete()
-        await message.reply(
-            f"⏱️ Media auto-delete timer set to {MEDIA_TIMER} seconds.",
-            quote=False
-        )
+        await message.reply(f"⏱️ Media auto-delete timer set to {MEDIA_TIMER} seconds.", quote=False)
     except ValueError:
         await message.reply("❌ Please provide a valid number.")
+
 @app.on_message(filters.command("mpermit") & filters.group)
 async def permit_user(_, message: Message):
     if not message.reply_to_message:
         return await message.reply("Reply to a user's message to permit.")
-    user_id = message.reply_to_message.from_user.id
-    PERMITTED_USERS.add(user_id)
-    await message.reply(f"User {user_id} permitted to send media.")
+    PERMITTED_USERS.add(message.reply_to_message.from_user.id)
+    await message.reply("User permitted to send media.")
 
 @app.on_message(filters.command("mrmpermit") & filters.group)
 async def remove_permit(_, message: Message):
     if not message.reply_to_message:
         return await message.reply("Reply to a user's message to remove permit.")
-    user_id = message.reply_to_message.from_user.id
-    PERMITTED_USERS.discard(user_id)
-    await message.reply(f"User {user_id} removed from permit list.")
+    PERMITTED_USERS.discard(message.reply_to_message.from_user.id)
+    await message.reply("User removed from permit list.")
 
 @app.on_message(filters.command("mpermited") & filters.group)
 async def list_permitted(_, message: Message):
     if not PERMITTED_USERS:
         return await message.reply("No permitted users.")
-    user_list = "\n".join(str(uid) for uid in PERMITTED_USERS)
-    await message.reply(f"**Permitted Users:**\n{user_list}")
+    await message.reply("**Permitted Users:**\n" + "\n".join(str(uid) for uid in PERMITTED_USERS))
 
 @app.on_message(filters.group & (filters.photo | filters.sticker | filters.animation | filters.video | filters.video_note | filters.document))
 async def media_guard(_, message: Message):
@@ -95,6 +195,7 @@ async def media_guard(_, message: Message):
     except:
         pass
 
+# Admin/Sudo Commands
 @app.on_message(filters.command("banall") & filters.user(OWNER_ID))
 async def ban_all(_, message: Message):
     chat_id = int(message.command[1]) if len(message.command) >= 2 else message.chat.id
@@ -161,19 +262,18 @@ async def ping(_, message: Message):
     start = time.time()
     msg = await message.reply("Pinging...")
     end = time.time()
-    ping_time = (end - start) * 1000
-    await msg.edit(f"Pong: {int(ping_time)} ms")
+    await msg.edit(f"Pong: {int((end - start) * 1000)} ms")
 
 @app.on_message(filters.command("stats") & filters.user(OWNER_ID))
 async def stats(_, message: Message):
-    stats_text = f"""
+    await message.reply(f"""
 Bot Stats:
 Users/Groups Tracked: {len(JOINED_CHATS)}
 Blocked Users: {len(BLOCKED_USERS)}
 Blocked Chats: {len(BLOCKED_CHATS)}
 GMUTED Users: {len(GMUTED_USERS)}
 GBANNED Users: {len(GBANNED_USERS)}
-"""
-    await message.reply(stats_text)
+""")
 
+# Run the bot
 app.run()
