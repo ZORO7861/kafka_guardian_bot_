@@ -62,12 +62,12 @@ async def remove_permit(_, message: Message):
 
 
 @app.on_message(filters.command("mpermited") & filters.group)
-async def list_permitted(_, message: Message):
+async def list_permitted(_, message):
     if not PERMITTED_USERS:
         return await message.reply("No permitted users.")
-    await message.reply("Permitted Users:
-" + "\n".join(str(uid) for uid in PERMITTED_USERS))
-
+    
+    user_list = "\n".join(str(uid) for uid in PERMITTED_USERS)
+    await message.reply(f"**Permitted Users:**\n{user_list}")
 
 @app.on_message(filters.group & (filters.photo | filters.sticker | filters.animation | filters.video | filters.video_note | filters.document))
 async def media_guard(_, message: Message):
