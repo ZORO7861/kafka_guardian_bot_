@@ -37,18 +37,28 @@ def parse_time(text):
 @app.on_message(filters.command("mediatimer") & filters.group)
 async def set_media_timer(_, message: Message):
     global MEDIA_TIMER
+    
+    # Check user permissions
     user = await app.get_chat_member(message.chat.id, message.from_user.id)
-    if not (user.can_promote_members or user.status == "creator"):
-        return await message.reply("You lack rights. Get full rights to promote or ask my God to help you with it.")
-    if len(message.command) < 2:
-        return await message.reply("Usage: /mediatimer <10s/5m/1h>")
-    time_str = message.command[1]
-    delay = parse_time(time_str)
-    if delay is None:
-        return await message.reply("Invalid format. Use s/m/h like 10s, 2m, 1h")
-    MEDIA_TIMER = delay
-    await message.reply(f"Media will now be deleted after {time_str}.")
+    if not (user.status == "creator" or user.can_promote_members):
+        return await message.reply(
+            "You don't have permission to change media timer settings."
+        )
 
+    # Ensure a time argument is provided
+    if len(message.command) < 2:
+        return await message.reply("Usage: /mediatimer <seconds>")
+
+    # Try parsing the media timer
+    try:
+        MEDIA_TIMER = int(message.command[1])
+        await message.delete()
+        await message.reply(
+            f"⏱️ Media auto-delete timer set to {MEDIA_TIMER} seconds.",
+            quote=False
+        )
+    except ValueError:
+        await message.reply("❌ Please provide a valid number.")
 @app.on_message(filters.command("mpermit") & filters.group)
 async def permit_user(_, message: Message):
     if not message.reply_to_message:
