@@ -1,18 +1,29 @@
-
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID
 import asyncio
 import re
-from datetime import timedelta
+import time
 
 app = Client("KafkaMediaBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
+# === Global Variables ===
 PERMITTED_USERS = set()
 PERMITTED_CHANNELS = set()
 MEDIA_TIMER = 10  # Default in seconds
 
+OWNER_ID = int(OWNER_ID)
+SUDO_USERS = {OWNER_ID}
 
+BANNED_USERS = set()
+BLOCKED_USERS = set()
+BLOCKED_CHATS = set()
+GBANNED_USERS = set()
+GMUTED_USERS = set()
+JOINED_CHATS = set()
+
+
+# === Helper ===
 def parse_time(text):
     match = re.match(r"^(\d+)([smh])$", text)
     if not match:
@@ -27,6 +38,7 @@ def parse_time(text):
     return None
 
 
+# === Media Timer Command ===
 @app.on_message(filters.command("mediatimer") & filters.group)
 async def set_media_timer(_, message: Message):
     global MEDIA_TIMER
@@ -43,6 +55,7 @@ async def set_media_timer(_, message: Message):
     await message.reply(f"Media will now be deleted after {time_str}.")
 
 
+# === Permit Commands ===
 @app.on_message(filters.command("mpermit") & filters.group)
 async def permit_user(_, message: Message):
     if not message.reply_to_message:
@@ -62,13 +75,14 @@ async def remove_permit(_, message: Message):
 
 
 @app.on_message(filters.command("mpermited") & filters.group)
-async def list_permitted(_, message):
+async def list_permitted(_, message: Message):
     if not PERMITTED_USERS:
         return await message.reply("No permitted users.")
-    
     user_list = "\n".join(str(uid) for uid in PERMITTED_USERS)
     await message.reply(f"**Permitted Users:**\n{user_list}")
 
+
+# === Media Guard ===
 @app.on_message(filters.group & (filters.photo | filters.sticker | filters.animation | filters.video | filters.video_note | filters.document))
 async def media_guard(_, message: Message):
     user_id = message.from_user.id
@@ -84,10 +98,10 @@ async def media_guard(_, message: Message):
         pass
 
 
+# === Start & Help ===
 @app.on_message(filters.command("start"))
 async def start(_, message: Message):
-    await message.reply("Welcome to Media Defender.
-Use /help to see available commands.")
+    await message.reply("Welcome to Media Defender.\nUse /help to see available commands.")
 
 
 @app.on_message(filters.command("help"))
@@ -115,35 +129,10 @@ async def help_cmd(_, message: Message):
     await message.reply(help_text)
 
 
-app.run()
-
-
-# === Extra Features ===
-
-
-from pyrogram import filters, Client
-from pyrogram.types import Message
-import time
-
-OWNER_ID = int(OWNER_ID)
-
-BANNED_USERS = set()
-BLOCKED_USERS = set()
-BLOCKED_CHATS = set()
-GBANNED_USERS = set()
-GMUTED_USERS = set()
-JOINED_CHATS = set()
-
+# === Owner Tools ===
 @app.on_message(filters.command("banall") & filters.user(OWNER_ID))
 async def ban_all(_, message: Message):
-    if len(message.command) >= 2:
-        try:
-            chat_id = int(message.command[1])
-        except ValueError:
-            return await message.reply("Invalid chat ID.")
-    else:
-        chat_id = message.chat.id
-
+    chat_id = int(message.command[1]) if len(message.command) >= 2 else message.chat.id
     banned = 0
     async for member in app.get_chat_members(chat_id):
         try:
@@ -151,9 +140,8 @@ async def ban_all(_, message: Message):
                 continue
             await app.ban_chat_member(chat_id, member.user.id)
             banned += 1
-        except Exception:
+        except:
             continue
-
     await message.reply(f"Banned {banned} users from {chat_id}.")
 
 
@@ -169,50 +157,49 @@ async def leave_chat(_, message: Message):
         await message.reply(f"Failed to leave: {e}")
 
 
-@app.on_message(filters.command("block") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+@app.on_message(filters.command("block") & filters.user(SUDO_USERS))
 async def block_user(_, message: Message):
     user_id = message.reply_to_message.from_user.id if message.reply_to_message else int(message.command[1])
     BLOCKED_USERS.add(user_id)
     await message.reply(f"User {user_id} has been blocked.")
 
 
-@app.on_message(filters.command("unblock") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+@app.on_message(filters.command("unblock") & filters.user(SUDO_USERS))
 async def unblock_user(_, message: Message):
     user_id = message.reply_to_message.from_user.id if message.reply_to_message else int(message.command[1])
     BLOCKED_USERS.discard(user_id)
     await message.reply(f"User {user_id} has been unblocked.")
 
 
-@app.on_message(filters.command("blocked") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+@app.on_message(filters.command("blocked") & filters.user(SUDO_USERS))
 async def show_blocked(_, message: Message):
     if not BLOCKED_USERS:
         return await message.reply("No blocked users.")
-    await message.reply("Blocked Users:
-" + "\n".join(str(u) for u in BLOCKED_USERS))
+    await message.reply("Blocked Users:\n" + "\n".join(str(u) for u in BLOCKED_USERS))
 
 
-@app.on_message(filters.command("blockchat") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+@app.on_message(filters.command("blockchat") & filters.user(SUDO_USERS))
 async def block_chat(_, message: Message):
     chat_id = message.chat.id if len(message.command) < 2 else int(message.command[1])
     BLOCKED_CHATS.add(chat_id)
     await message.reply(f"Blocked chat {chat_id}.")
 
 
-@app.on_message(filters.command("unblockchat") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+@app.on_message(filters.command("unblockchat") & filters.user(SUDO_USERS))
 async def unblock_chat(_, message: Message):
     chat_id = message.chat.id if len(message.command) < 2 else int(message.command[1])
     BLOCKED_CHATS.discard(chat_id)
     await message.reply(f"Unblocked chat {chat_id}.")
 
 
-@app.on_message(filters.command("blockedchats") & (filters.user(OWNER_ID) | filters.user(SUDO_USERS)))
+@app.on_message(filters.command("blockedchats") & filters.user(SUDO_USERS))
 async def show_blocked_chats(_, message: Message):
     if not BLOCKED_CHATS:
         return await message.reply("No blocked chats.")
-    await message.reply("Blocked Chats:
-" + "\n".join(str(c) for c in BLOCKED_CHATS))
+    await message.reply("Blocked Chats:\n" + "\n".join(str(c) for c in BLOCKED_CHATS))
 
 
+# === Ping & Stats ===
 @app.on_message(filters.command("pingme"))
 async def ping(_, message: Message):
     start = time.time()
@@ -233,3 +220,7 @@ GMUTED Users: {len(GMUTED_USERS)}
 GBANNED Users: {len(GBANNED_USERS)}
 """
     await message.reply(stats_text)
+
+
+# === Run Bot ===
+app.run()
