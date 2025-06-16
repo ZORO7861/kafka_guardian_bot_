@@ -1,0 +1,14 @@
+
+import os
+
+# Required Variables
+API_ID = 27309741
+API_HASH = "7c2cabcd8d3f982d6f790eef7262890f"
+BOT_TOKEN = "7903993110:AAFb9w5wfHIehHEKylW_BvVAKP1y326ovv8"
+
+# Owner and SUDO
+OWNER_ID = 6037958673
+SUDO_USERS = {6037958673}
+
+# Log channel
+LOG_CHANNEL = -1002129923515  # https://t.me/+cEfW8trx9rA2NGI1
