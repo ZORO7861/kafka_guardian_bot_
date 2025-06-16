@@ -22,10 +22,11 @@ GMUTED_USERS = set()
 JOINED_CHATS = set()
 
 
-# Start command
-@app.on_message(filters.command("start") & filters.private)
+# /start command
+@Client.on_message(filters.command("start") & filters.private)
 async def start_handler(client, message: Message):
     user = message.from_user.first_name or "User"
+
     text = f"""
 𝖧𝖾𝗅𝗅𝗈, {user} 🧸  
 ➻ 𝖬𝗒𝗌𝖾𝗅𝖿 𝐊ᴀғᴋᴀ 𝐇ᴏɴᴋᴀɪ – 𝖳𝗁𝖾 𝖬𝗈𝗌𝗍 𝖯𝗈𝗐𝖾𝗋𝖿𝗎𝗅 𝖳𝖾𝗅𝖾𝗀𝗋𝖺𝗆 𝖡𝗈𝗍 𝖥𝗈𝗋 𝖤𝖽𝗂𝗍 & 𝖬𝖾𝖽𝗂𝖺 𝖣𝖾𝖿𝖾𝗇𝗌𝖾 ✨  
@@ -38,6 +39,7 @@ async def start_handler(client, message: Message):
 ━━━━━━━━━━━━━━━━━━━━━━━  
 📚 Tap "Commands" below for features list.
 """
+
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ 𝐀ᴅᴅ 𝐌ᴇ 𝐓ᴏ 𝐘ᴏᴜʀ 𝐆ʀᴏᴜᴘ", url=f"https://t.me/{client.me.username}?startgroup=true")],
         [InlineKeyboardButton("📚 𝐂ᴏᴍᴍᴀɴᴅ𝐬", callback_data="command_menu")],
@@ -47,15 +49,15 @@ async def start_handler(client, message: Message):
         ],
         [InlineKeyboardButton("👑 𝐎ᴡɴᴇʀ", url="https://t.me/ScorgeVirus")]
     ])
+
     await message.reply_photo(
         photo="https://files.catbox.moe/v2y36k.jpg",
         caption=text,
         reply_markup=keyboard
     )
 
-
-# Inline Command Menu
-@app.on_callback_query(filters.regex("command_menu"))
+# Main command menu
+@Client.on_callback_query(filters.regex("command_menu"))
 async def command_menu_handler(client, callback_query: CallbackQuery):
     text = "<b>📚 Kafka Honkai Command Menu</b>\n\nSelect a category below:"
     keyboard = InlineKeyboardMarkup([
@@ -67,7 +69,8 @@ async def command_menu_handler(client, callback_query: CallbackQuery):
     ])
     await callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="html")
 
-@app.on_callback_query(filters.regex("basic_cmds"))
+# Basic Commands
+@Client.on_callback_query(filters.regex("basic_cmds"))
 async def basic_cmds(client, callback_query: CallbackQuery):
     text = """
 <b>⚙️ Basic Commands:</b>
@@ -78,9 +81,13 @@ async def basic_cmds(client, callback_query: CallbackQuery):
 /alive - Show bot status  
 /stats - Usage stats
 """
-    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Back", callback_data="command_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="html")
 
-@app.on_callback_query(filters.regex("edit_cmds"))
+# Edit Commands
+@Client.on_callback_query(filters.regex("edit_cmds"))
 async def edit_cmds(client, callback_query: CallbackQuery):
     text = """
 <b>📝 Edit Defense:</b>
@@ -92,9 +99,13 @@ async def edit_cmds(client, callback_query: CallbackQuery):
 /edit on - Enable edit defense  
 /edit off - Disable edit defense
 """
-    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Back", callback_data="command_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="html")
 
-@app.on_callback_query(filters.regex("media_cmds"))
+# Media Commands
+@Client.on_callback_query(filters.regex("media_cmds"))
 async def media_cmds(client, callback_query: CallbackQuery):
     text = """
 <b>🎞 Media Defense:</b>
@@ -106,9 +117,13 @@ async def media_cmds(client, callback_query: CallbackQuery):
 /media on - Enable media defense  
 /media off - Disable media defense
 """
-    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Back", callback_data="command_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="html")
 
-@app.on_callback_query(filters.regex("admin_cmds"))
+# Admin/Sudo Commands
+@Client.on_callback_query(filters.regex("admin_cmds"))
 async def admin_cmds(client, callback_query: CallbackQuery):
     text = """
 <b>👑 Admin & Sudo:</b>
@@ -123,9 +138,13 @@ async def admin_cmds(client, callback_query: CallbackQuery):
 /unblockchat - Unblock group  
 /blockedchats - Blocked chats list
 """
-    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Back", callback_data="command_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="html")
 
-@app.on_callback_query(filters.regex("mod_cmds"))
+# Moderation Commands
+@Client.on_callback_query(filters.regex("mod_cmds"))
 async def mod_cmds(client, callback_query: CallbackQuery):
     text = """
 <b>🛡 Moderation:</b>
@@ -135,15 +154,10 @@ async def mod_cmds(client, callback_query: CallbackQuery):
 /gmute - Globally mute  
 /ungmute - Unmute globally
 """
-    await callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="command_menu")]]), parse_mode="html")
-
-# Helpers
-def parse_time(text):
-    match = re.match(r"^(\d+)([smh])$", text)
-    if not match:
-        return None
-    value, unit = match.groups()
-    return int(value) * {"s": 1, "m": 60, "h": 3600}.get(unit, 0)
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔙 Back", callback_data="command_menu")]
+    ])
+    await callback_query.message.edit_text(text, reply_markup=keyboard, parse_mode="html")
 
 # Media Defense Commands
 @app.on_message(filters.command("mediatimer") & filters.group)
